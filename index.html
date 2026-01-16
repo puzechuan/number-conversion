@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>进制转换 & 次方计算工具</title>
+    <!-- 引入Tailwind CSS简化样式开发 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card {
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .input-focus:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-900 text-white p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-bold text-center mb-8 text-cyan-300">数字工具集</h1>
+        
+        <!-- 进制转换卡片 -->
+        <div class="card bg-slate-800/70 rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-6 text-lime-300">进制转换</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 源数字区域 -->
+                <div>
+                    <label class="block mb-2 text-sm text-gray-300">源数字</label>
+                    <input type="text" id="sourceNumber" class="w-full bg-slate-700/80 border border-slate-600 rounded-lg px-4 py-2 input-focus" placeholder="输入要转换的数字">
+                    
+                    <label class="block mt-4 mb-2 text-sm text-gray-300">源进制 (2-36)</label>
+                    <input type="number" id="sourceBase" min="2" max="36" value="10" class="w-full bg-slate-700/80 border border-slate-600 rounded-lg px-4 py-2 input-focus">
+                </div>
+                
+                <!-- 目标数字区域 -->
+                <div>
+                    <label class="block mb-2 text-sm text-gray-300">目标数字</label>
+                    <input type="text" id="targetNumber" readonly class="w-full bg-slate-700/80 border border-slate-600 rounded-lg px-4 py-2 text-cyan-300">
+                    
+                    <label class="block mt-4 mb-2 text-sm text-gray-300">目标进制 (2-36)</label>
+                    <input type="number" id="targetBase" min="2" max="36" value="2" class="w-full bg-slate-700/80 border border-slate-600 rounded-lg px-4 py-2 input-focus">
+                </div>
+            </div>
+            
+            <button id="convertBtn" class="mt-6 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg transition-colors">执行转换</button>
+            <p id="convertError" class="mt-3 text-red-400 text-sm hidden"></p>
+        </div>
+        
+        <!-- 次方计算卡片 -->
+        <div class="card bg-slate-800/70 rounded-xl p-6">
+            <h2 class="text-2xl font-semibold mb-6 text-lime-300">次方计算</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block mb-2 text-sm text-gray-300">底数</label>
+                    <input type="number" id="baseNumber" step="any" class="w-full bg-slate-700/80 border border-slate-600 rounded-lg px-4 py-2 input-focus">
+                </div>
+                
+                <div>
+                    <label class="block mb-2 text-sm text-gray-300">指数</label>
+                    <input type="number" id="exponentNumber" step="any" class="w-full bg-slate-700/80 border border-slate-600 rounded-lg px-4 py-2 input-focus">
+                </div>
+                
+                <div>
+                    <label class="block mb-2 text-sm text-gray-300">计算结果</label>
+                    <input type="text" id="powerResult" readonly class="w-full bg-slate-700/80 border border-slate-600 rounded-lg px-4 py-2 text-cyan-300">
+                </div>
+            </div>
+            
+            <button id="powerBtn" class="mt-6 bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg transition-colors">计算次方</button>
+            <p id="powerError" class="mt-3 text-red-400 text-sm hidden"></p>
+        </div>
+    </div>
+
+    <script>
+        // 进制转换核心逻辑
+        document.getElementById('convertBtn').addEventListener('click', function() {
+            const errorEl = document.getElementById('convertError');
+            const sourceNum = document.getElementById('sourceNumber').value.trim();
+            const sourceBase = parseInt(document.getElementById('sourceBase').value);
+            const targetBase = parseInt(document.getElementById('targetBase').value);
+            
+            // 重置错误提示
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+            
+            try {
+                // 输入验证
+                if (!sourceNum) throw new Error('请输入要转换的数字');
+                if (isNaN(sourceBase) || sourceBase < 2 || sourceBase > 36) throw new Error('源进制必须是2-36之间的整数');
+                if (isNaN(targetBase) || targetBase < 2 || targetBase > 36) throw new Error('目标进制必须是2-36之间的整数');
+                
+                // 进制转换核心：先转十进制，再转目标进制
+                // 处理小数的情况
+                let [integerPart, fractionalPart] = sourceNum.split('.');
+                
+                // 整数部分转换
+                let decimalInteger = parseInt(integerPart || '0', sourceBase);
+                
+                // 小数部分转换
+                let decimalFraction = 0;
+                if (fractionalPart) {
+                    for (let i = 0; i < fractionalPart.length; i++) {
+                        const digit = parseInt(fractionalPart[i], sourceBase);
+                        decimalFraction += digit / (sourceBase ** (i + 1));
+                    }
+                }
+                
+                const decimalTotal = decimalInteger + decimalFraction;
+                
+                // 转换为目标进制
+                let result = '';
+                
+                // 处理整数部分
+                if (decimalInteger === 0) {
+                    result += '0';
+                } else {
+                    let num = Math.floor(decimalTotal);
+                    while (num > 0) {
+                        const remainder = num % targetBase;
+                        // 处理10-35的情况，转换为字母
+                        result = (remainder >= 10 ? String.fromCharCode(55 + remainder) : remainder) + result;
+                        num = Math.floor(num / targetBase);
+                    }
+                }
+                
+                // 处理小数部分
+                if (decimalFraction > 0) {
+                    result += '.';
+                    let fraction = decimalTotal - Math.floor(decimalTotal);
+                    let precision = 10; // 保留10位小数
+                    while (precision-- && fraction > 0) {
+                        fraction *= targetBase;
+                        const intPart = Math.floor(fraction);
+                        result += (intPart >= 10 ? String.fromCharCode(55 + intPart) : intPart);
+                        fraction -= intPart;
+                    }
+                }
+                
+                document.getElementById('targetNumber').value = result;
+                
+            } catch (err) {
+                errorEl.textContent = '转换失败：' + err.message;
+                errorEl.classList.remove('hidden');
+                document.getElementById('targetNumber').value = '';
+            }
+        });
+        
+        // 次方计算核心逻辑
+        document.getElementById('powerBtn').addEventListener('click', function() {
+            const errorEl = document.getElementById('powerError');
+            const base = parseFloat(document.getElementById('baseNumber').value);
+            const exponent = parseFloat(document.getElementById('exponentNumber').value);
+            
+            // 重置错误提示
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+            
+            try {
+                if (isNaN(base)) throw new Error('请输入有效的底数');
+                if (isNaN(exponent)) throw new Error('请输入有效的指数');
+                
+                // 处理特殊情况：0的负数次方无意义
+                if (base === 0 && exponent < 0) throw new Error('0不能进行负数次方运算');
+                
+                // 计算次方
+                const result = Math.pow(base, exponent);
+                
+                // 处理科学计数法显示问题，保留10位有效数字
+                const formattedResult = Number.isFinite(result) 
+                    ? result.toPrecision(10) 
+                    : '超出计算范围';
+                
+                document.getElementById('powerResult').value = formattedResult;
+                
+            } catch (err) {
+                errorEl.textContent = '计算失败：' + err.message;
+                errorEl.classList.remove('hidden');
+                document.getElementById('powerResult').value = '';
+            }
+        });
+    </script>
+</body>
+</html>
